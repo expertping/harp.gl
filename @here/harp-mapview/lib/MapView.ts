@@ -1517,33 +1517,52 @@ export class MapView extends THREE.EventDispatcher {
     }
 
     /**
-     * Moves the camera to specified geocoordinates, sets desired zoom level and adjusts yaw and
-     * pitch.
+     * The method that sets the camera to the desired angle (`pitchDeg`) and `distance` (in meters)
+     * to the `target` location.
+     *
+     * @param target The location to look at.
+     * @param distance The distance of the camera to the target in meters.
+     * @param pitchDeg The camera tilt angle in degrees.
+     * @param yawDeg The camera yaw angle in degrees.
+     */
+    lookAt(target: GeoCoordinates, distance: number, pitchDeg: number = 0, yawDeg: number = 0) {
+        MapViewUtils.setRotation(this, yawDeg, pitchDeg);
+        this.geoCenter = MapViewUtils.getCameraCoordinatesFromTargetCoordinates(
+            target,
+            distance,
+            yawDeg,
+            pitchDeg,
+            this
+        );
+        const pitchRad = THREE.Math.degToRad(pitchDeg);
+        this.camera.position.setZ(Math.cos(pitchRad) * distance);
+    }
+
+    /**
+     * Moves the camera to the specified [[GeoCoordinates]], sets the desired `zoomLevel` and
+     * adjusts the yaw and pitch.
      *
      * @param geoPos Geolocation to move the camera to.
-     * @param zoom Desired zoom level.
-     * @param yaw Camera yaw.
-     * @param pitch Camera pitch.
+     * @param zoomLevel Desired zoom level.
+     * @param yawDeg Camera yaw in degrees.
+     * @param pitchDeg Camera pitch in degrees.
      */
     setCameraGeolocationAndZoom(
         geoPos: GeoCoordinates,
-        zoom: number,
-        yaw?: number,
-        pitch?: number
+        zoomLevel: number,
+        yawDeg: number = 0,
+        pitchDeg: number = 0
     ): void {
         if (this.projection.type === ProjectionType.Planar) {
-            if (yaw !== undefined && pitch !== undefined) {
-                MapViewUtils.setRotation(this, yaw, pitch);
-            }
-
+            MapViewUtils.setRotation(this, yawDeg, pitchDeg);
             this.geoCenter = geoPos;
-            MapViewUtils.zoomOnTargetPosition(this, 0, 0, zoom);
+            MapViewUtils.zoomOnTargetPosition(this, 0, 0, zoomLevel);
         } else {
             this.geoCenter = new GeoCoordinates(geoPos.latitude, geoPos.longitude);
 
             const distanceToGround = MapViewUtils.calculateDistanceToGroundFromZoomLevel(
                 this,
-                THREE.Math.clamp(zoom, this.minZoomLevel, this.maxZoomLevel)
+                THREE.Math.clamp(zoomLevel, this.minZoomLevel, this.maxZoomLevel)
             );
 
             const surfaceNormal = new THREE.Vector3();
