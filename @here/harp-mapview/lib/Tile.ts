@@ -18,6 +18,9 @@ import {
     isExtrudedLineTechnique,
     isExtrudedPolygonTechnique,
     isFillTechnique,
+    isInterpolatedProperty,
+    isLineTechnique,
+    isSegmentsTechnique,
     isSolidLineTechnique,
     isSquaresTechnique,
     isTerrainTechnique,
@@ -45,6 +48,7 @@ import {
     EdgeMaterialParameters,
     FadingFeature,
     MapMeshBasicMaterial,
+    MapMeshStandardMaterial,
     SolidLineMaterial
 } from "@here/harp-materials";
 import {
@@ -1415,6 +1419,29 @@ export class Tile implements CachedResource {
                     (object as MapViewPoints).enableRayTesting = technique.enablePicking!;
                 }
 
+                if (isLineTechnique(technique) || isSegmentsTechnique(technique)) {
+                    if (isInterpolatedProperty(technique.color)) {
+                        const fadingParams = this.getFadingParams(technique);
+                        FadingFeature.addRenderHelper(
+                            object,
+                            fadingParams.fadeNear,
+                            fadingParams.fadeFar,
+                            false,
+                            false,
+                            (renderer, mat) => {
+                                const lineMaterial = mat as THREE.LineBasicMaterial;
+
+                                lineMaterial.color.set(
+                                    getOptionValue(
+                                        getPropertyValue(technique.color, this.mapView.zoomLevel),
+                                        "#000000"
+                                    )
+                                );
+                            }
+                        );
+                    }
+                }
+
                 // Lines renderOrder fix: Render them as transparent objects, but make sure they end
                 // up in the opaque rendering queue (by disabling transparency onAfterRender, and
                 // enabling it onBeforeRender).
@@ -1435,6 +1462,13 @@ export class Tile implements CachedResource {
                             );
                             const unitFactor =
                                 metricUnits === "Pixel" ? this.mapView.pixelToWorld * 0.5 : 1.0;
+
+                            lineMaterial.color.set(
+                                getOptionValue(
+                                    getPropertyValue(technique.color, this.mapView.zoomLevel),
+                                    "#000000"
+                                )
+                            );
 
                             lineMaterial.lineWidth =
                                 getOptionValue(
@@ -1466,18 +1500,39 @@ export class Tile implements CachedResource {
                 }
 
                 if (isExtrudedLineTechnique(technique)) {
-                    // extruded lines are normal meshes, and need transparency only when fading
-                    // is defined.
-                    if (technique.fadeFar !== undefined) {
+                    // extruded lines are normal meshes, and need transparency only when fading or
+                    // dynamic properties is defined.
+                    if (
+                        technique.fadeFar !== undefined ||
+                        isInterpolatedProperty(technique.color)
+                    ) {
                         const fadingParams = this.getFadingParams(
                             technique as StandardExtrudedLineTechnique
                         );
+
                         FadingFeature.addRenderHelper(
                             object,
                             fadingParams.fadeNear,
                             fadingParams.fadeFar,
                             true,
-                            true
+                            true,
+                            isInterpolatedProperty(technique.color)
+                                ? (renderer, mat) => {
+                                      const extrudedMaterial = mat as
+                                          | MapMeshStandardMaterial
+                                          | MapMeshBasicMaterial;
+
+                                      extrudedMaterial.color.set(
+                                          getOptionValue(
+                                              getPropertyValue(
+                                                  technique.color,
+                                                  this.mapView.zoomLevel
+                                              ),
+                                              "#000000"
+                                          )
+                                      );
+                                  }
+                                : undefined
                         );
                     }
                 }
@@ -1485,16 +1540,51 @@ export class Tile implements CachedResource {
                 this.addFeatureData(srcGeometry, technique, object);
 
                 if (isExtrudedPolygonTechnique(technique) || isFillTechnique(technique)) {
-                    // filled polygons are normal meshes, and need transparency only when fading is
-                    // defined.
-                    if (technique.fadeFar !== undefined) {
+                    // filled polygons are normal meshes, and need transparency only when fading or
+                    // dynamic properties is defined.
+                    const hasDynamicColor =
+                        isInterpolatedProperty(technique.color) ||
+                        (isExtrudedPolygonTechnique(technique) &&
+                            isInterpolatedProperty(technique.emissive));
+                    if (technique.fadeFar !== undefined || hasDynamicColor) {
                         const fadingParams = this.getFadingParams(technique);
                         FadingFeature.addRenderHelper(
                             object,
                             fadingParams.fadeNear,
                             fadingParams.fadeFar,
                             true,
-                            true
+                            true,
+                            hasDynamicColor
+                                ? (renderer, mat) => {
+                                      const polygonMaterial = mat as
+                                          | MapMeshBasicMaterial
+                                          | MapMeshStandardMaterial;
+
+                                      polygonMaterial.color.set(
+                                          getOptionValue(
+                                              getPropertyValue(
+                                                  technique.color,
+                                                  this.mapView.zoomLevel
+                                              ),
+                                              "#000000"
+                                          )
+                                      );
+
+                                      if (isExtrudedPolygonTechnique(technique)) {
+                                          const standardMat = mat as MapMeshStandardMaterial;
+
+                                          standardMat.emissive.set(
+                                              getOptionValue(
+                                                  getPropertyValue(
+                                                      technique.emissive,
+                                                      this.mapView.zoomLevel
+                                                  ),
+                                                  "#000000"
+                                              )
+                                          );
+                                      }
+                                  }
+                                : undefined
                         );
                     }
                 }
@@ -1599,7 +1689,20 @@ export class Tile implements CachedResource {
                         fadingParams.lineFadeNear,
                         fadingParams.lineFadeFar,
                         false,
-                        false
+                        false,
+                        isInterpolatedProperty(extrudedPolygonTechnique.lineColor)
+                            ? (renderer, mat) => {
+                                  edgeMaterial.color.set(
+                                      getOptionValue(
+                                          getPropertyValue(
+                                              extrudedPolygonTechnique.lineColor,
+                                              this.mapView.zoomLevel
+                                          ),
+                                          "#000000"
+                                      )
+                                  );
+                              }
+                            : undefined
                     );
 
                     if (extrusionAnimatonEnabled) {
@@ -1665,7 +1768,21 @@ export class Tile implements CachedResource {
                             fadingParams.lineFadeNear,
                             fadingParams.lineFadeFar,
                             true,
-                            false
+                            false,
+                            isInterpolatedProperty(fillTechnique.lineColor)
+                                ? (renderer, mat) => {
+                                      const edgeMaterial = mat as EdgeMaterial;
+                                      edgeMaterial.color.set(
+                                          getOptionValue(
+                                              getPropertyValue(
+                                                  fillTechnique.lineColor,
+                                                  this.mapView.zoomLevel
+                                              ),
+                                              "#000000"
+                                          )
+                                      );
+                                  }
+                                : undefined
                         );
 
                         this.registerTileObject(outlineObj);
@@ -1714,6 +1831,16 @@ export class Tile implements CachedResource {
                             );
                             const unitFactor =
                                 metricUnits === "Pixel" ? this.mapView.pixelToWorld * 0.5 : 1.0;
+
+                            lineMaterial.color.set(
+                                getOptionValue(
+                                    getPropertyValue(
+                                        outlineTechnique.secondaryColor,
+                                        this.mapView.zoomLevel
+                                    ),
+                                    "#000000"
+                                )
+                            );
 
                             lineMaterial.lineWidth =
                                 getOptionValue(
