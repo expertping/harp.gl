@@ -69,12 +69,19 @@
         }
     ],
     "images": {
-        "maki_icons": {
+        "icons_day_maki": {
             "url": "maki_icons.png",
             "preload": true,
             "atlas": "maki_icons.json"
         }
     },
+    "poiTables": [
+        {
+            "name": "tzPoiTableMaki",
+            "url": "poi_table_maki.json",
+            "useAltNamesForKey": true
+        }
+    ],
     "styles": {
         "tilezen": [
             {
@@ -1126,6 +1133,56 @@
                     "fadeFar": 0.9
                 },
                 "final": true
+            },
+            {
+                "description": "POIs in tilezen format use maki icons",
+                "when": "$layer == 'pois' && has(kind)",
+                "technique": "labeled-icon",
+                "attr": {
+                    "poiTable": "tzPoiTableMaki",
+                    "poiNameField": "kind",
+                    "imageTexturePostfix": "-15",
+                    "iconScale": 1,
+                    "size": 16,
+                    "yOffset": 8,
+                    "vAlignment": "Above",
+                    "hAlignment": "Center",
+                    "textIsOptional": true,
+                    "iconIsOptional": false,
+                    "renderTextDuringMovements": false,
+                    "textMayOverlap": false,
+                    "textReserveSpace": true,
+                    "iconMayOverlap": true,
+                    "iconReserveSpace": false,
+                    "color": "#41403B",
+                    "backgroundColor": "#FFFFFF",
+                    "backgroundOpacity": 0.5
+                },
+                "final": true
+            },
+            {
+                "description": "POIs incompatible to tilezen format - draw debug",
+                "when": "$layer == 'pois' && !has(kind)",
+                "technique": "text",
+                "attr": {
+                    "label": "POI no kind",
+                    "color": "#929292",
+                    "size": 14.4,
+                    "backgroundColor": "#FF0000",
+                    "backgroundOpacity": 0.5
+                }
+            },
+            {
+                "description": "POIs in tilezen format - draw debug",
+                "when": "$layer == 'pois' && 'all'",
+                "technique": "text",
+                "attr": {
+                    "label": "POI all",
+                    "color": "#929292",
+                    "size": 14.4,
+                    "backgroundColor": "#00FFFF",
+                    "backgroundOpacity": 0.5
+                }
             },
             {
                 "description": "building_geometry",
