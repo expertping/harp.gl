@@ -39,7 +39,8 @@
         "three": "^0.104.0"
     },
     "dependencies": {
-        "@here/harp-geoutils": "^0.4.0"
+        "@here/harp-geoutils": "^0.4.0",
+        "@here/harp-datasource-protocol": "^0.4.0"
     },
     "publishConfig": {
         "access": "public"

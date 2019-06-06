@@ -759,6 +759,7 @@ export class MapView extends THREE.EventDispatcher {
         this.m_camera.up.set(0, 0, 1);
         this.m_lookAtDistance = 0;
         this.m_focalLength = 0;
+        this.m_scene.userData = this;
         this.m_scene.add(this.m_camera); // ensure the camera is added to the scene.
         this.m_screenProjector = new ScreenProjector(this.m_camera);
 
